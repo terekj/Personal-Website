@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Personal Website
 
-## Getting Started
+This repository contains the source code for my personal website. The site serves as a central hub for my work, projects, and professional background. It is designed to present my projects and technical interests in a clean and accessible format.
 
-First, run the development server:
+The website functions as both a portfolio and a professional landing page.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Overview
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The site highlights several aspects of my work and experience:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Personal introduction
+- Project portfolio
+- Resume and professional background
+- Ways to connect
 
-## Learn More
+The design emphasizes simplicity, readability, and smooth navigation through a single-page scrolling layout.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Responsive Design**  
+The site adapts to different screen sizes, including desktop, tablet, and mobile devices.
 
-## Deploy on Vercel
+**Project Showcase**  
+Featured projects include work in software engineering, embedded systems, and web development.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Interactive Navigation**  
+A dynamic navigation bar allows users to quickly jump between sections of the page.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Resume Access**  
+Visitors can view or download my resume directly from the site.
+
+**Contact Section**  
+Provides ways to connect through email and professional networks.
+
+---
+
+## Tech Stack
+
+Frontend
+- React
+- Next.js
+
+Styling
+- CSS
+- TailwindCSS
+
+Fonts
+- EB Garamond
+- Figtree
+
+Deployment
+- Vercel
+
+---
+
+Check it out @ https://terekj.me
+---
+
+## License
+
+This project is open source and available under the MIT License.
