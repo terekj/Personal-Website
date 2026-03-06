@@ -64,7 +64,7 @@ export default async function Projects() {
           pro<span className="align-[0.06em]">·</span>jects
         </h2>
         <p className="mt-3 text-lg text-zinc-800 sm:text-xl">
-          An overview of my work
+          An overview of my work.
         </p>
       </div>
 
