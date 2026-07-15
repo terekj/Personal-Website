@@ -49,7 +49,7 @@ export default function Hero() {
             <ol className="mt-3 space-y-2 text-[15px] leading-7 text-zinc-800 sm:text-[16px]">
               <li>
                 <span className="mr-2 font-semibold">1.</span>
-                Computer Science, B.S. student at University of California, Riverside
+                studying Computer Science, M.S. @ University of California, Riverside
               </li>
               <li>
                 <span className="mr-2 font-semibold">2.</span>
