@@ -437,7 +437,7 @@ export default function ArchivedGame({ puzzle, archive, config }: Props) {
         </section>
 
         <div className={styles.colophon}>
-          archived, a nested-bracket puzzle based on The Atlantic's Bracket City
+          archived, a nested-bracket puzzle based on The Atlantic&apos;s Bracket City
         </div>
       </main>
 

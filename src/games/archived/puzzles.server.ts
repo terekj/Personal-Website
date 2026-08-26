@@ -9,14 +9,24 @@ import type { GameConfig, Puzzle } from "./types";
 const PUZZLES_DIR = path.join(process.cwd(), "src/games/archived/puzzles");
 const CONFIG_PATH = path.join(process.cwd(), "src/games/archived/config.json");
 
+// Pinned to Pacific time rather than the server's own local zone — a
+// puzzle file's "today" gate (below) has to mean the same wall-clock
+// day regardless of which region the app happens to be deployed in
+// (Vercel functions typically run in UTC), so this settles the
+// "day boundary" open question in bracket-puzzle-spec.md §5/§6 as
+// Pacific midnight, not UTC midnight and not the visitor's own zone.
+// Intl handles the PST/PDT switch automatically.
+const DAY_BOUNDARY_TZ = "America/Los_Angeles";
+
 function todayISO(): string {
-  // Local calendar date, per the "local midnight" day-boundary decision
-  // in bracket-puzzle-spec.md §5/§6.
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: DAY_BOUNDARY_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 /** Every puzzle file on disk, unfiltered, sorted by date. */

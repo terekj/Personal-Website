@@ -58,10 +58,15 @@
   word-break:break-word;
 }
 .answer{font-weight:400}
-/* the mark stays on the word that just collapsed until the next one does */
+/* the mark stays on the word that just collapsed until the next one does.
+   isolation:isolate gives it its own stacking context — without it, this
+   background can suppress the yellow "open" gradient on an ancestor
+   .bracket that hasn't collapsed yet (a nested clue's answer sits inside
+   its still-open parent, e.g. Com[...] before "Compound" fully resolves) */
 .fresh{
   background:linear-gradient(transparent 10%,var(--fresh) 10%,var(--fresh) 90%,transparent 90%);
   border-radius:1px;
+  isolation:isolate;
 }
 .new{animation:land .42s cubic-bezier(.2,.9,.25,1) both}
 @keyframes land{

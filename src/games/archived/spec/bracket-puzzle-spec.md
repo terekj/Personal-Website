@@ -333,7 +333,7 @@ Accessibility falls out of this too. The clue is a real `<button>`, not a clicka
 
 - Mobile first. Nested brackets are a layout problem on a 360px screen. Deep nesting needs to wrap and indent without becoming unreadable, which practically caps useful nesting depth around three or four levels.
 - The clue is now both a readable label and an interactive control. On mobile it has to be tappable without being so obviously a button that players tap it by reflex before trying to solve.
-- The day boundary is ambiguous with a global audience. Pick one rule and state it in the UI rather than trying to be clever.
+- The day boundary is pinned to Pacific time (§6, settled), not the visitor's own zone and not the deploy host's zone.
 
 ---
 
@@ -364,7 +364,6 @@ Accessibility falls out of this too. The clue is a real `<button>`, not a clicka
 
 **Product**
 
-13. What is the day boundary rule? Local midnight is friendlier, UTC is simpler. Leaning local, with the date shown explicitly.
 14. What does the share string look like? It has to communicate performance without leaking the clue count in a way that helps.
 15. Should partial progress expire? If someone opens a puzzle, solves two brackets, and returns in March, do they resume or restart?
 16. What happens on a date with no usable historical anchor? Skipping is the honest answer and gaps are already tolerated, but if the calendar starts looking moth-eaten the convention may need a release valve, such as allowing a birth or a first rather than an event.
@@ -375,7 +374,7 @@ Accessibility falls out of this too. The clue is a real `<button>`, not a clicka
 18. When is the database actually worth it? Probably at the point where I want cross-device progress or per-clue analytics, neither of which is a v1 need.
 19. Is there a v2 where other people write puzzles? If yes, the authoring tooling has to become a web form with the same validation rules, and `author` stops being decorative.
 
-**Settled, kept here so the reasoning is not lost:** whether to show answer length (no). How many letters a hint reveals (one, the first). Where the hint controls live (nowhere, the clue is the control). Whether reveal absorbs or adds to the letter penalty (adds, deliberately). What case the hint letter uses (the answer's own). Whether hyphenated and punctuated compounds are legal answers (no). Whether alternates exist (no, one answer per clue). How to break a tie when two open clues share an answer (first in reading order, and validation rejects the puzzle anyway).
+**Settled, kept here so the reasoning is not lost:** whether to show answer length (no). How many letters a hint reveals (one, the first). Where the hint controls live (nowhere, the clue is the control). Whether reveal absorbs or adds to the letter penalty (adds, deliberately). What case the hint letter uses (the answer's own). Whether hyphenated and punctuated compounds are legal answers (no). Whether alternates exist (no, one answer per clue). How to break a tie when two open clues share an answer (first in reading order, and validation rejects the puzzle anyway). What the day boundary rule is (Pacific time, explicitly — not the visitor's zone, and not whatever zone the deploy host happens to run in, so a puzzle goes live at the same wall-clock moment regardless of where it's hosted).
 
 ---
 
