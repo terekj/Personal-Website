@@ -35,7 +35,7 @@ export async function generateMetadata({
     : getPuzzleByDate(date);
   if (!puzzle) return { title: "archived" };
   return {
-    title: `archived · ${puzzle.title}`,
+    title: `[archived] · ${puzzle.title}`,
     description: `A nested-bracket word puzzle for ${puzzle.date}.`,
   };
 }
