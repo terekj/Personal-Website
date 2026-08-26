@@ -91,6 +91,18 @@ function ClueSpan({
           : undefined
       }
     >
+      {/* Chromium fails to paint this span's gradient background when its
+          literal first child is itself a nested clue element, with no
+          leading text run of the parent's own before it — e.g.
+          suff[[infamous for her bob||Karen]: "..."||rage], where "rage"'s
+          content starts immediately with the Karen clue. A leading space
+          works around it and reads fine; a zero-width space does not fix
+          it, so it has to be a real rendered space. Confirmed by testing:
+          moving the exact same DOM node elsewhere still fails, but
+          inserting a plain " " before the nested child fixes it in place —
+          this looks like a real browser bug in how box-decoration-break
+          fragments a box whose first line box fragment is empty. */}
+      {node.parts[0]?.type === "clue" && " "}
       {renderParts(node.parts, freshId, animateId, onTouch)}
       {open && node.hint !== "hidden" && (
         <span className={styles.letter}>({firstLetter(node.answer)})</span>
@@ -109,7 +121,23 @@ function renderParts(
     p.type === "text" ? (
       p.value
     ) : (
-      <ClueSpan key={p.path} node={p} freshId={freshId} animateId={animateId} onTouch={onTouch} />
+      <ClueSpan
+        // The key includes the clue's paint state (closed/open/solved),
+        // not just its path. Chromium has a real bug where a .bracket
+        // span's gradient background sometimes silently fails to repaint
+        // when only its className changes in place (confirmed: identical
+        // computed styles between a working and a broken instance, and
+        // the same DOM node moved elsewhere on the page paints correctly
+        // — it's specific to updating this exact node in place). Keying
+        // on paint state forces React to mount a fresh DOM node on each
+        // transition instead of patching the old one, which always
+        // paints correctly.
+        key={`${p.path}:${p.solved ? "solved" : isOpen(p) ? "open" : "closed"}`}
+        node={p}
+        freshId={freshId}
+        animateId={animateId}
+        onTouch={onTouch}
+      />
     )
   );
 }
