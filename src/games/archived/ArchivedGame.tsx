@@ -415,7 +415,7 @@ export default function ArchivedGame({ puzzle, archive, config, previewing }: Pr
           </div>
           <div className={styles.pos}>adjective</div>
           <ol className={styles.defs}>
-            <li>kept in a running collection, one puzzle per calendar date</li>
+            <li>a running collection of riddles</li>
             <li>solvable from the inside out, and playable any day after the one it was written for</li>
           </ol>
         </header>
