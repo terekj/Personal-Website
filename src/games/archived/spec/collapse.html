@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>col·lapse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   rev 5. The board is the whole game.
+
+   Every clue whose children are solved is answerable at once.
+   A clue can hide a whole word or just part of one, so
+   Com[a dog's least favorite abode] collapses to "Compound".
+
+   One text color throughout. Two highlighter marks:
+     yellow  answerable right now
+     green   the word that just collapsed
+   ============================================================ */
+:root{
+  --paper:#FCFCFA;
+  --ink:#16160F;
+  --grey:#8B8B82;
+  --faint:#C4C4BC;
+  --rule:#E7E7E1;
+  --mark:#F7EDA8;      /* open */
+  --mark-hi:#F2E27E;   /* open, hover */
+  --fresh:#D6E8D2;     /* just collapsed */
+  --alert:#A8443C;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-weight:300;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;text-align:left}
+:focus-visible{outline:1.5px solid var(--ink);outline-offset:3px}
+
+.page{max-width:640px;margin:0 auto;padding:56px 26px 80px}
+.lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--grey)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- entry head ---------- */
+.entryhead{margin-bottom:52px}
+.head-top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{font-size:30px;font-weight:400;margin:0;letter-spacing:-.005em}
+.ipa{font-family:var(--mono);font-size:11px;color:var(--grey);margin-top:5px}
+.pos{font-style:italic;font-size:14px;color:var(--grey);margin-top:11px}
+.defs{margin:5px 0 0;padding-left:19px;font-size:14.5px;line-height:1.75}
+.defs li::marker{color:var(--faint);font-family:var(--mono);font-size:10px}
+
+.nav{display:flex;align-items:center;gap:13px;flex-shrink:0}
+.nav button{font-family:var(--mono);font-size:11px;color:var(--grey);transition:color .12s}
+.nav button:hover:not(:disabled){color:var(--ink)}
+.nav button:disabled{color:var(--faint);cursor:not-allowed}
+.nav .arch{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--faint)}
+
+/* ---------- slug ---------- */
+.slug{display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;padding-bottom:9px;border-bottom:1px solid var(--rule);margin-bottom:30px}
+.slug .name{font-style:italic;font-size:15px}
+.slug .sep{flex:1}
+
+/* ---------- the board ---------- */
+.board{
+  font-size:clamp(1.24rem,4.5vw,1.62rem);
+  line-height:2.05;
+  color:var(--ink);          /* one color. no exceptions. */
+  margin-bottom:40px;
+  word-break:break-word;
+}
+.answer{font-weight:400}
+/* the mark stays on the word that just collapsed until the next one does */
+.answer.fresh{
+  background:linear-gradient(transparent 10%,var(--fresh) 10%,var(--fresh) 90%,transparent 90%);
+  border-radius:1px;
+}
+.answer.new{animation:land .42s cubic-bezier(.2,.9,.25,1) both}
+@keyframes land{
+  0%{opacity:0;transform:translateY(2px);letter-spacing:.06em}
+  100%{opacity:1;transform:none;letter-spacing:normal}
+}
+.bracket{-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:.04em .03em;border-radius:1px}
+.bracket::before{content:"["}
+.bracket::after{content:"]"}
+/* yellow means: you can answer this one right now */
+.bracket.open{
+  cursor:pointer;
+  background:linear-gradient(transparent 10%,var(--mark) 10%,var(--mark) 90%,transparent 90%);
+}
+.bracket.open:hover{background:linear-gradient(transparent 10%,var(--mark-hi) 10%,var(--mark-hi) 90%,transparent 90%)}
+.letter{font-family:var(--mono);font-size:.66em;letter-spacing:.04em;padding-left:.16em}
+
+/* ---------- console: input, status, tally. nothing else. ---------- */
+.field{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ink);padding-bottom:8px}
+.field input{flex:1;min-width:0;border:none;background:none;padding:0;font-family:var(--serif);font-weight:300;font-size:20px;color:var(--ink)}
+.field input:focus{outline:none}
+.field input::placeholder{color:var(--faint)}
+.field .go{font-family:var(--mono);font-size:11px;color:var(--grey);transition:color .12s}
+.field .go:hover{color:var(--ink)}
+.field.bad{border-color:var(--alert);animation:nudge .3s ease}
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}60%{transform:translateX(4px)}}
+
+.state{display:block;font-family:var(--mono);font-size:10.5px;line-height:1.6;color:var(--faint);margin-top:11px;min-height:17px}
+.state b{color:var(--grey);font-weight:400}
+.state.armed b{color:var(--alert)}
+
+.row{display:flex;align-items:baseline;gap:18px;margin-top:14px}
+.row button{font-family:var(--mono);font-size:11px;color:var(--grey);transition:color .12s}
+.row button:hover:not(:disabled){color:var(--ink)}
+.row button:disabled{color:var(--faint);cursor:not-allowed}
+.grow{flex:1}
+.tally{font-family:var(--mono);font-size:11px;color:var(--faint);white-space:nowrap}
+.tally b{color:var(--ink);font-weight:400}
+
+.primer{font-size:13.5px;line-height:1.8;color:var(--grey);margin:34px 0 0;max-width:52ch}
+.primer .sw{display:inline-block;width:.62em;height:.62em;border-radius:2px;vertical-align:baseline}
+.primer .sw.y{background:var(--mark)}
+.primer .sw.g{background:var(--fresh)}
+.primer code{font-family:var(--mono);font-size:.85em;color:var(--ink)}
+
+/* ---------- overlays ---------- */
+.veil{position:fixed;inset:0;background:rgba(252,252,250,.94);display:none;place-items:center;padding:26px;z-index:20}
+.veil.on{display:grid}
+.sheet{width:100%;max-width:352px;animation:up .26s ease both}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.sheet-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px}
+.sheet-top .x{font-family:var(--mono);font-size:11px;color:var(--grey)}
+.sheet-top .x:hover{color:var(--ink)}
+
+.mon{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
+.mon span{font-style:italic;font-size:15px}
+.mon button{font-family:var(--mono);font-size:11px;color:var(--grey)}
+.mon button:disabled{color:var(--faint);cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.dow{font-family:var(--mono);font-size:9px;color:var(--faint);text-align:center;padding-bottom:7px}
+.cell{aspect-ratio:1;display:grid;place-items:center;position:relative;font-family:var(--mono);font-size:11.5px;color:#DEDED7;border-radius:2px}
+.cell.has{color:var(--ink);cursor:pointer}
+.cell.has:hover{background:var(--mark)}
+.cell.dot::after,.cell.ring::after{content:"";position:absolute;bottom:5px;width:3px;height:3px;border-radius:50%}
+.cell.dot::after{background:var(--ink)}
+.cell.ring::after{border:1px solid var(--grey)}
+.cell.here{background:var(--mark)}
+.key{display:flex;gap:15px;margin-top:18px;font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+
+.rank{font-size:27px;font-weight:400;margin:0 0 6px}
+.rank-note{font-style:italic;font-size:14px;color:var(--grey);margin-bottom:24px}
+.final{font-size:17px;line-height:1.65;padding-left:14px;border-left:1px solid var(--rule);margin-bottom:14px}
+.note{font-size:13px;line-height:1.7;font-style:italic;color:var(--grey);margin:0 0 22px;padding-left:14px}
+.note:empty{display:none}
+.tape{font-family:var(--mono);font-size:15px;letter-spacing:.14em;margin-bottom:22px;word-break:break-all}
+.nums{display:flex;gap:22px;margin-bottom:26px;font-family:var(--mono);font-size:9.5px;color:var(--grey)}
+.nums b{display:block;font-family:var(--serif);font-size:22px;font-weight:300;color:var(--ink);margin-top:4px}
+.acts{display:flex;gap:20px;font-family:var(--mono);font-size:11px}
+.acts button{color:var(--grey)}
+.acts button:hover{color:var(--ink)}
+.acts .lead{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+
+.colophon{margin-top:64px;padding-top:16px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:10px;line-height:1.9;color:var(--faint)}
+.colophon em{color:var(--grey);font-style:normal}
+
+@media (max-width:520px){
+  .page{padding:40px 22px 64px}
+  .board{line-height:2}
+  .row{flex-wrap:wrap}
+  .tally{width:100%}
+  .grow{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<main class="page">
+
+  <header class="entryhead">
+    <div class="head-top">
+      <div>
+        <h1>col·lapse</h1>
+        <div class="ipa">/kəˈlaps/</div>
+      </div>
+      <nav class="nav">
+        <button id="prev" title="previous">←</button>
+        <button class="arch" id="open-cal">archive</button>
+        <button id="next" title="next">→</button>
+      </nav>
+    </div>
+    <div class="pos">verb</div>
+    <ol class="defs">
+      <li>to solve a bracketed sentence from the inside out</li>
+      <li>what a clue does once the clues inside it are answered</li>
+    </ol>
+  </header>
+
+  <div class="slug">
+    <span class="lbl" id="s-no"></span>
+    <span class="lbl" id="s-date"></span>
+    <span class="name" id="s-title"></span>
+    <span class="sep"></span>
+    <span class="lbl" id="s-level"></span>
+  </div>
+
+  <div class="board" id="board"></div>
+  <div class="sr" id="announcer" aria-live="polite"></div>
+
+  <section>
+    <div class="field" id="field">
+      <input id="guess" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="answer any highlighted clue">
+      <button class="go" id="submit">enter ↵</button>
+    </div>
+    <span class="state" id="state"></span>
+    <div class="row">
+      <button id="quit">give up</button>
+      <span class="grow"></span>
+      <span class="tally"><b id="t-score">0</b> pts · <b id="t-wrong">0</b> wrong · <b id="t-hint">0</b> hints</span>
+    </div>
+
+    <p class="primer" id="primer">
+      <span class="sw y"></span> marks the clues you can answer right now, in any order. a clue may hide a whole
+      word or only part of one, so <code>Com[a dog's least favorite abode]</code> collapses to <em>compound</em>.
+      answer one and the bracket around it opens up. <span class="sw g"></span> marks the word that just
+      collapsed. solve it all and you get a plain sentence about something that happened on this date.
+    </p>
+  </section>
+
+  <div class="colophon">
+    demo build, rev 5 · one unpunctuated word or fragment per answer, one letter per hint, length never shown<br>
+    puzzles are inline json shaped <em>{ id, date, title, difficulty, source, solution, note }</em> with answers authored as [clue ||Answer]<br>
+    progress is held in memory, so a refresh clears it · open the console for the validator
+  </div>
+</main>
+
+<div class="veil" id="cal-veil">
+  <div class="sheet">
+    <div class="sheet-top"><span class="lbl">archive</span><button class="x" id="cal-close">close</button></div>
+    <div class="mon"><button id="mprev">←</button><span id="mlabel"></span><button id="mnext">→</button></div>
+    <div class="grid" id="dows"></div>
+    <div class="grid" id="cal-grid" style="margin-top:3px"></div>
+    <div class="key"><span>· solved</span><span>∘ started</span></div>
+  </div>
+</div>
+
+<div class="veil" id="end-veil">
+  <div class="sheet">
+    <div class="sheet-top"><span class="lbl" id="end-head"></span><button class="x" id="end-close">close</button></div>
+    <h2 class="rank" id="end-rank"></h2>
+    <div class="rank-note" id="end-note"></div>
+    <div class="final" id="end-final"></div>
+    <p class="note" id="end-note-day"></p>
+    <div class="tape" id="end-tape"></div>
+    <div class="nums">
+      <span>score<b id="n-score"></b></span>
+      <span>wrong<b id="n-wrong"></b></span>
+      <span>letters<b id="n-hint"></b></span>
+      <span>revealed<b id="n-reveal"></b></span>
+    </div>
+    <div class="acts">
+      <button class="lead" id="end-copy">copy result</button>
+      <button id="end-archive">archive</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG
+   `reveal` is an INCREMENT on top of `letter`, not a total.
+   Reveal is only reachable through the letter, so a revealed
+   clue always costs letter + reveal = 7. Deliberate: every
+   step down the assistance path costs strictly more than the
+   step before it. Do not split these into independent totals.
+   ============================================================ */
+const CONFIG={
+  penalties:{wrong:1,letter:2,reveal:5},
+  guardMs:400,                       // swallow a repeat click on the same clue
+  ranks:[
+    {max:0,  name:"lex·i·cog·ra·pher", note:"not one wrong turn."},
+    {max:3,  name:"ed·i·tor",          note:"clean enough to print."},
+    {max:8,  name:"read·er",           note:"solid work."},
+    {max:15, name:"brows·er",          note:"got there in the end."},
+    {max:28, name:"skim·mer",          note:"the brackets won a few."},
+    {max:1e9,name:"guess·er",          note:"no shame in reading along."}
+  ],
+  today:"2026-08-25"
+};
+
+/* ============================================================
+   PUZZLES
+
+   Rules the corpus follows:
+     - the solved sentence plainly states what happened on this
+       calendar date in another year. no riddles in the payoff.
+     - clues are crossword clues: terse, definitional.
+     - an answer is one unpunctuated word OR a fragment of one.
+       fragments sit flush against surrounding text:
+         [Human being ||person]al        -> personal
+         [Lumber ||Wood][Shares ||stock] -> Woodstock
+         [Element 79 ||gold]en           -> golden
+     - no alternates. one answer per clue.
+   ============================================================ */
+const PUZZLES=[
+{schema_version:3,id:"2026-07-20",date:"2026-07-20",author:"DJ",title:"one small step",difficulty:2,
+ source:`[[Greek god of the lyre ||Apollo] 11 commander ||Armstrong] walked on the [Earth's one satellite ||moon] in [Abbey Road's year ||1969].`,
+ solution:`Armstrong walked on the moon in 1969.`,
+ note:`Apollo 11 touched down on July 20, 1969, and Armstrong stepped onto the surface a few hours later.`},
+
+{schema_version:3,id:"2026-07-30",date:"2026-07-30",author:"DJ",title:"first final",difficulty:3,
+ source:`[[Capital on the Plate ||Montevideo]'s country ||Uruguay] beat [Land of the tango ||Argentina] in the first World Cup final, held in [Year Pluto was found ||1930].`,
+ solution:`Uruguay beat Argentina in the first World Cup final, held in 1930.`,
+ note:`Uruguay won 4 to 2 in Montevideo on July 30, 1930, closing the first World Cup.`},
+
+{schema_version:3,id:"2026-08-01",date:"2026-08-01",author:"DJ",title:"moon man",difficulty:2,
+ source:`[Cable channel with a moon-man logo ||MTV] began playing music [Short films for songs ||videos] in [[Prince who married Diana ||Charles]'s wedding year ||1981].`,
+ solution:`MTV began playing music videos in 1981.`,
+ note:`MTV signed on at 12:01 a.m. on August 1, 1981. The first clip it played was about a radio star.`},
+
+{schema_version:3,id:"2026-08-06",date:"2026-08-06",author:"DJ",title:"hypertext",difficulty:3,
+ source:`Berners-Lee announced the [[Arachnid ||spider]'s handiwork ||web] to the [General populace ||public] in [Year the Soviet Union ended ||1991].`,
+ solution:`Berners-Lee announced the web to the public in 1991.`,
+ note:`On August 6, 1991, Berners-Lee posted a summary of the World Wide Web project to a Usenet group, the first public description of it.`},
+
+{schema_version:3,id:"2026-08-12",date:"2026-08-12",author:"DJ",title:"five one five zero",difficulty:3,
+ source:`[Big Blue ||IBM] sold its first [Human being ||person]al computer in [[Hollywood actor turned president ||Reagan]'s first year in office ||1981].`,
+ solution:`IBM sold its first personal computer in 1981.`,
+ note:`IBM announced the model 5150 on August 12, 1981. A mouse was not among the options.`},
+
+{schema_version:3,id:"2026-08-15",date:"2026-08-15",author:"DJ",title:"wood and stock",difficulty:3,
+ source:`[Lumber ||Wood][Shares of a company ||stock] opened on a [[Cow's yield ||milk] producer's spread ||dairy] farm in [Year Sesame Street debuted ||1969].`,
+ solution:`Woodstock opened on a dairy farm in 1969.`,
+ note:`The festival opened on Max Yasgur's dairy farm in Bethel, New York on August 15, 1969.`},
+
+{schema_version:3,id:"2026-08-18",date:"2026-08-18",author:"DJ",title:"thirty-sixth state",difficulty:3,
+ source:`[[Country music's capital ||Nashville]'s state ||Tennessee] approved the amendment that let [Ladies ||women] vote in [Year Prohibition began ||1920].`,
+ solution:`Tennessee approved the amendment that let women vote in 1920.`,
+ note:`Tennessee ratified the Nineteenth Amendment on August 18, 1920, the thirty-sixth state to do so and the one that carried it.`},
+
+{schema_version:3,id:"2026-08-19",date:"2026-08-19",author:"DJ",title:"fixed image",difficulty:4,
+ source:`[[Seine's city ||Paris]'s country ||France] gave the [Early photograph on silvered copper ||daguerreotype] to the [Globe ||world] in 1839.`,
+ solution:`France gave the daguerreotype to the world in 1839.`,
+ note:`On August 19, 1839, the French government presented the daguerreotype process to the public free of patent, a gift to the world.`},
+
+{schema_version:3,id:"2026-08-20",date:"2026-08-20",author:"DJ",title:"golden record",difficulty:3,
+ source:`Voyager 2 left [Third rock from the sun ||Earth] carrying a [Element 79 ||gold]en [Vinyl disc ||record] in [[King of rock and roll ||Elvis]'s last year ||1977].`,
+ solution:`Voyager 2 left Earth carrying a golden record in 1977.`,
+ note:`Voyager 2 launched on August 20, 1977, carrying a gold-plated record of sounds and images from Earth.`},
+
+{schema_version:3,id:"2026-08-21",date:"2026-08-21",author:"DJ",title:"she smiles",difficulty:3,
+ source:`A [Employee ||worker] carried the Mona Lisa out of the [[Glass shape at its entrance ||pyramid]-fronted Paris museum ||Louvre] in [Year of the first Indy 500 ||1911].`,
+ solution:`A worker carried the Mona Lisa out of the Louvre in 1911.`,
+ note:`Vincenzo Peruggia, who had worked at the museum, walked out with the painting under his smock on August 21, 1911.`},
+
+{schema_version:3,id:"2026-08-24",date:"2026-08-24",author:"DJ",title:"seventy-nine",difficulty:3,
+ source:`[[Pizza's birthplace ||Naples]' looming volcano ||Vesuvius] buried [Ruined town beside Herculaneum ||Pompeii] under [Fire's gray leavings ||ash] in the year 79.`,
+ solution:`Vesuvius buried Pompeii under ash in the year 79.`,
+ note:`August 24 is the traditional date for the eruption of AD 79, though later evidence points to that autumn instead.`},
+
+{schema_version:3,id:"2026-08-25",date:"2026-08-25",author:"DJ",title:"spyglass",difficulty:2,
+ source:`[[City with a leaning tower ||Pisa]'s famous astronomer ||Galileo] showed his [Stargazer's tube ||telescope] to the rulers of [City of canals ||Venice] in 1609.`,
+ solution:`Galileo showed his telescope to the rulers of Venice in 1609.`,
+ note:`On August 25, 1609, Galileo demonstrated his telescope to Venetian lawmakers from the top of the campanile in St Mark's Square.`}
+].sort((a,b)=>a.date<b.date?-1:1);
+
+/* ============================================================
+   PARSER   [ clue parts || Answer ]   with \\[ \\] escapes
+
+   One answer per clue, no alternates: everything between ||
+   and the closing bracket is the answer.
+   ============================================================ */
+function parseSource(src){
+  let i=0;
+  function parts_(depth,path){
+    const out=[];let buf="",child=0;
+    const flush=()=>{if(buf){out.push({type:"text",value:buf});buf=""}};
+    while(i<src.length){
+      const c=src[i];
+      if(c==="\\"&&i+1<src.length){buf+=src[i+1];i+=2;continue}
+      if(c==="["){flush();i++;out.push(clue_(depth+1,path?path+"."+child:String(child)));child++;continue}
+      if(c==="]")break;
+      if(c==="|"&&src[i+1]==="|")break;
+      buf+=c;i++;
+    }
+    flush();return out;
+  }
+  function clue_(depth,path){
+    const parts=parts_(depth,path);
+    if(!(src[i]==="|"&&src[i+1]==="|"))throw new Error("clue "+path+" missing ||");
+    i+=2;let raw="";
+    while(i<src.length){
+      const c=src[i];
+      if(c==="\\"&&i+1<src.length){raw+=src[i+1];i+=2;continue}
+      if(c==="]")break;
+      raw+=c;i++;
+    }
+    if(src[i]!=="]")throw new Error("unclosed clue "+path);
+    i++;
+    const answer=raw.trim();
+    if(!answer)throw new Error("clue "+path+" has no answer");
+    // hint is a three-state machine, not a counter. no per-clue wrongs:
+    // a guess is thrown at the board, not aimed at one bracket.
+    return{type:"clue",depth,path,parts,answer,solved:false,hint:"hidden",solvedBy:null};
+  }
+  const root=parts_(0,"");
+  if(i<src.length)throw new Error("unexpected ] at "+i);
+  return root;
+}
+function collect(parts,out=[]){for(const p of parts)if(p.type==="clue"){collect(p.parts,out);out.push(p)}return out}
+const kids=n=>n.parts.filter(p=>p.type==="clue");
+const isOpen=n=>!n.solved&&kids(n).every(c=>c.solved);
+const norm=s=>(s||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Z0-9]/g,"");
+/* the letter keeps the answer's own case: (W) for Wood, (p) for person */
+const firstLetter=a=>a[0]||"?";
+const flat=parts=>parts.map(p=>p.type==="text"?p.value:(p.solved?p.answer:"[…]")).join("").trim();
+
+/* validator. in the real build this is tools/validate.js and it fails CI. */
+const ONE_WORD=/^[A-Za-z0-9]+$/;   // no spaces, no hyphens, no apostrophes
+function validate(){
+  let bad=0;
+  for(const p of PUZZLES){
+    let tree,cs;
+    try{tree=parseSource(p.source);cs=collect(tree)}
+    catch(e){console.error(`[${p.id}] parse error:`,e.message);bad++;continue}
+
+    for(const c of cs)if(!ONE_WORD.test(c.answer)){
+      console.error(`[${p.id}] clue ${c.path} answer "${c.answer}" is not a single unpunctuated word`);bad++}
+
+    const built=(function walk(ps){return ps.map(x=>x.type==="text"?x.value:x.answer).join("")})(tree);
+    if(built!==p.solution){
+      console.error(`[${p.id}] substitution does not match solution`);
+      console.error(`   built: ${built}`);
+      console.error(`   said : ${p.solution}`);bad++}
+
+    const seen=new Map();
+    for(const c of cs){const k=norm(c.answer);
+      if(seen.has(k)){console.warn(`[${p.id}] "${c.answer}" answers both ${seen.get(k)} and ${c.path}; reading order decides`);bad++}
+      else seen.set(k,c.path)}
+
+    if(Math.max(...cs.map(c=>c.depth))<2){
+      console.warn(`[${p.id}] no nesting; this is a trivia question, not a bracket puzzle`);bad++}
+    if(!p.note)console.warn(`[${p.id}] no note, so the date connection is never shown`);
+  }
+  console.log(bad?`validate: ${bad} problem(s)`:`validate: ${PUZZLES.length} puzzles clean`);
+}
+
+/* ============================================================
+   STATE
+   wrongs lives on the run, not the clue: a miss cannot be
+   attributed to a bracket the player never named.
+   ============================================================ */
+const progress={};
+let P=null,tree=null,clues=[],done=false,gaveUp=false,wrongs=0;
+let freshId=null,animateId=null;        // freshId keeps its mark until the next collapse
+let lastTouchId=null,lastTouchAt=0;     // repeat-click guard, per clue
+const $=id=>document.getElementById(id);
+
+function load(id){
+  P=PUZZLES.find(p=>p.id===id);
+  tree=parseSource(P.source);
+  clues=collect(tree);
+  const s=progress[id];
+  if(s){
+    for(const c of clues){const k=s.clues[c.path];if(k)Object.assign(c,k)}
+    done=s.done;gaveUp=s.gaveUp;wrongs=s.wrongs;
+  }else{done=false;gaveUp=false;wrongs=0}
+  freshId=null;animateId=null;lastTouchId=null;lastTouchAt=0;
+  slug();render();
+  if(done)showEnd();
+}
+function save(){
+  const snap={clues:{},done,gaveUp,wrongs};
+  for(const c of clues)snap.clues[c.path]={solved:c.solved,hint:c.hint,solvedBy:c.solvedBy};
+  progress[P.id]=snap;
+}
+const started=id=>{const s=progress[id];return s&&Object.values(s.clues).some(c=>c.solved)};
+const finished=id=>progress[id]&&progress[id].done;
+const openClues=()=>clues.filter(isOpen);
+
+const hintCost=c=>(c.hint!=="hidden"?CONFIG.penalties.letter:0)
+                 +(c.hint==="revealed"?CONFIG.penalties.reveal:0);
+const score=()=>wrongs*CONFIG.penalties.wrong+clues.reduce((s,c)=>s+hintCost(c),0);
+const rankFor=s=>CONFIG.ranks.find(r=>s<=r.max);
+const nHint=()=>clues.filter(c=>c.hint!=="hidden").length;
+const nReveal=()=>clues.filter(c=>c.hint==="revealed").length;
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function slug(){
+  const d=new Date(P.date+"T12:00:00");
+  $("s-no").textContent="no. "+String(PUZZLES.indexOf(P)+1).padStart(2,"0");
+  $("s-date").textContent=d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}).toLowerCase();
+  $("s-title").textContent=P.title;
+  $("s-level").textContent="level "+P.difficulty;
+  $("prev").disabled=PUZZLES.indexOf(P)===0;
+  $("next").disabled=PUZZLES.indexOf(P)===PUZZLES.length-1;
+}
+
+function build(parts,frag){
+  for(const p of parts){
+    if(p.type==="text"){frag.appendChild(document.createTextNode(p.value));continue}
+    const s=document.createElement("span");
+
+    if(p.solved){
+      s.className="answer"+(p.path===freshId?" fresh":"")+(p.path===animateId?" new":"");
+      s.textContent=p.answer;
+      frag.appendChild(s);
+      continue;
+    }
+
+    const open=isOpen(p);
+    s.className="bracket"+(open?" open":"");
+    s.dataset.id=p.path;
+    build(p.parts,s);
+
+    // the letter is appended inside the clue, where the clue lives
+    if(open&&p.hint!=="hidden"){
+      const l=document.createElement("span");
+      l.className="letter";l.textContent="("+firstLetter(p.answer)+")";
+      s.appendChild(l);
+    }
+
+    // only open brackets are interactive, and an open bracket never
+    // contains another one, so no nested controls
+    if(open){
+      s.setAttribute("role","button");
+      s.setAttribute("tabindex","0");
+      s.setAttribute("aria-label",
+        p.hint==="hidden"
+          ? `Clue: ${flat(p.parts)}. Activate for its first letter, two points.`
+          : `Clue: ${flat(p.parts)}, starts with ${firstLetter(p.answer)}. Activate again to reveal the answer for five more points.`);
+    }
+    frag.appendChild(s);
+  }
+}
+
+function render(){
+  const b=$("board");b.innerHTML="";
+  const f=document.createDocumentFragment();build(tree,f);b.appendChild(f);
+  animateId=null;
+
+  $("t-score").textContent=score();
+  $("t-wrong").textContent=wrongs;
+  $("t-hint").textContent=nHint();
+  $("primer").style.display=clues.some(c=>c.solved)?"none":"";
+
+  const open=openClues(),st=$("state");
+  if(!open.length){
+    st.textContent=done?"solved.":"";
+    st.classList.remove("armed");
+    for(const id of["guess","submit","quit"])$(id).disabled=true;
+    return;
+  }
+  for(const id of["guess","submit","quit"])$(id).disabled=false;
+  if(open.some(c=>c.hint!=="hidden")){
+    st.innerHTML='tap a lettered clue again to reveal it <b>+5</b>';
+    st.classList.add("armed");
+  }else{
+    st.innerHTML=`${open.length} clue${open.length>1?"s":""} open · tap one for its first letter <b>+2</b>`;
+    st.classList.remove("armed");
+  }
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function solve(n,how){
+  n.solved=true;n.solvedBy=how;
+  freshId=n.path;animateId=n.path;     // the mark moves to the word that just collapsed
+  if(!clues.some(c=>!c.solved)){done=true;save();render();setTimeout(showEnd,560);return}
+  save();render();$("guess").value="";$("guess").focus();
+}
+
+/* the clue is the only hint control: letter, then reveal */
+function touch(id){
+  if(done)return;
+  const n=clues.find(c=>c.path===id);
+  if(!n||!isOpen(n))return;
+
+  // a deliberate repeat is never this fast, a double-click always is
+  if(id===lastTouchId&&Date.now()-lastTouchAt<CONFIG.guardMs)return;
+  lastTouchId=id;lastTouchAt=Date.now();
+
+  if(n.hint==="hidden"){
+    n.hint="lettered";save();render();
+    $("announcer").textContent="Starts with "+firstLetter(n.answer);
+    $("guess").focus();return;
+  }
+  n.hint="revealed";
+  $("announcer").textContent="Answer revealed: "+n.answer;
+  solve(n,"reveal");
+}
+
+/* a guess is thrown at the whole board. whichever open clue it
+   matches collapses; first in reading order breaks a tie. */
+function submit(){
+  if(done)return;
+  const v=$("guess").value;if(!norm(v))return;
+  const hit=openClues().find(c=>norm(c.answer)===norm(v));
+  if(hit){solve(hit,"guess");return}
+  wrongs++;save();
+  const fld=$("field");
+  fld.classList.remove("bad");void fld.offsetWidth;fld.classList.add("bad");
+  $("t-score").textContent=score();
+  $("t-wrong").textContent=wrongs;
+  $("guess").select();
+}
+
+function quit(){
+  if(!confirm("reveal the whole sentence and end the run?"))return;
+  for(const c of clues)if(!c.solved){c.solved=true;c.solvedBy="quit"}
+  done=true;gaveUp=true;freshId=null;
+  save();render();showEnd();
+}
+
+/* ============================================================
+   RESULT
+   one square per clue, hint state only. wrong guesses are a
+   run-level number and ride in the header line instead.
+   ◻ clean · ◫ took the letter · ◼ revealed
+   ============================================================ */
+const tape=()=>clues.map(c=>
+  (c.solvedBy==="quit"||c.hint==="revealed")?"◼":c.hint==="lettered"?"◫":"◻").join("");
+
+function showEnd(){
+  const s=score(),r=rankFor(s);
+  $("end-head").textContent=gaveUp?"unfiled":"result";
+  $("end-rank").textContent=gaveUp?"un·solved":r.name;
+  $("end-note").textContent=gaveUp?"the sentence is below, for what it is worth.":r.note;
+  $("end-final").textContent=P.solution;
+  $("end-note-day").textContent=P.note||"";
+  $("end-tape").textContent=tape();
+  $("n-score").textContent=gaveUp?"—":s;
+  $("n-wrong").textContent=wrongs;
+  $("n-hint").textContent=nHint();
+  $("n-reveal").textContent=nReveal();
+  $("end-veil").classList.add("on");
+}
+function copyResult(){
+  const d=new Date(P.date+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}).toLowerCase();
+  const s=score(),r=rankFor(s);
+  const text=`col·lapse · ${d}\n${gaveUp?"un·solved":r.name+" · "+s} · ${wrongs} wrong\n${tape()}`;
+  const ok=()=>{const b=$("end-copy");b.textContent="copied";setTimeout(()=>b.textContent="copy result",1500)};
+  const fb=()=>{const t=document.createElement("textarea");t.value=text;t.style.cssText="position:fixed;opacity:0";
+    document.body.appendChild(t);t.select();try{document.execCommand("copy");ok()}catch(e){}document.body.removeChild(t)};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(ok,fb);else fb();
+}
+
+/* ============================================================
+   ARCHIVE
+   ============================================================ */
+let month=null;
+const byDate=Object.fromEntries(PUZZLES.map(p=>[p.date,p]));
+const firstM=PUZZLES[0].date.slice(0,7),lastM=CONFIG.today.slice(0,7);
+
+function openCal(){
+  month=P.date.slice(0,7);
+  $("dows").innerHTML=["s","m","t","w","t","f","s"].map(d=>`<div class="dow">${d}</div>`).join("");
+  drawCal();$("cal-veil").classList.add("on");
+}
+function drawCal(){
+  const [y,m]=month.split("-").map(Number);
+  $("mlabel").textContent=new Date(y,m-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"}).toLowerCase();
+  $("mprev").disabled=month<=firstM;$("mnext").disabled=month>=lastM;
+  const lead=new Date(y,m-1,1).getDay(),days=new Date(y,m,0).getDate();
+  let h="";
+  for(let i=0;i<lead;i++)h+='<div class="cell"></div>';
+  for(let d=1;d<=days;d++){
+    const iso=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const has=!!byDate[iso],cls=["cell"];
+    if(has){
+      cls.push("has");
+      if(finished(iso))cls.push("dot");else if(started(iso))cls.push("ring");
+      if(iso===P.date)cls.push("here");
+    }
+    h+=`<div class="${cls.join(" ")}" ${has?`data-date="${iso}"`:""}>${d}</div>`;
+  }
+  $("cal-grid").innerHTML=h;
+}
+function shift(step){
+  let [y,m]=month.split("-").map(Number);
+  m+=step;if(m<1){m=12;y--}if(m>12){m=1;y++}
+  month=`${y}-${String(m).padStart(2,"0")}`;drawCal();
+}
+
+/* ============================================================
+   WIRING
+   ============================================================ */
+$("board").addEventListener("click",e=>{
+  const el=e.target.closest(".bracket");
+  if(el&&el.dataset.id)touch(el.dataset.id);
+});
+$("board").addEventListener("keydown",e=>{
+  if(e.key!=="Enter"&&e.key!==" ")return;
+  const el=e.target.closest(".bracket");
+  if(!el||!el.dataset.id)return;
+  e.preventDefault();touch(el.dataset.id);
+});
+$("submit").addEventListener("click",submit);
+$("guess").addEventListener("keydown",e=>{if(e.key==="Enter")submit()});
+$("quit").addEventListener("click",quit);
+$("prev").addEventListener("click",()=>load(PUZZLES[PUZZLES.indexOf(P)-1].id));
+$("next").addEventListener("click",()=>load(PUZZLES[PUZZLES.indexOf(P)+1].id));
+$("open-cal").addEventListener("click",openCal);
+$("cal-close").addEventListener("click",()=>$("cal-veil").classList.remove("on"));
+$("mprev").addEventListener("click",()=>shift(-1));
+$("mnext").addEventListener("click",()=>shift(1));
+$("cal-grid").addEventListener("click",e=>{
+  const c=e.target.closest("[data-date]");if(!c)return;
+  $("cal-veil").classList.remove("on");load(c.dataset.date);
+});
+$("end-close").addEventListener("click",()=>$("end-veil").classList.remove("on"));
+$("end-copy").addEventListener("click",copyResult);
+$("end-archive").addEventListener("click",()=>{$("end-veil").classList.remove("on");openCal()});
+for(const v of document.querySelectorAll(".veil"))
+  v.addEventListener("click",e=>{if(e.target===v)v.classList.remove("on")});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape")for(const v of document.querySelectorAll(".veil"))v.classList.remove("on");
+});
+
+validate();
+load(([...PUZZLES].reverse().find(p=>p.date<=CONFIG.today)||PUZZLES[0]).id);
+$("guess").focus();
+</script>
+</body>
+</html>

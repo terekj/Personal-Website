@@ -1,0 +1,156 @@
+/* ============================================================
+   archived — ported from the collapse.html prototype (see spec/), rev 5.
+   Everything is scoped under .wrap so it can't leak into the
+   rest of the site (the demo file styled `button`/`*` globally,
+   which is fine standalone but not inside a shared layout).
+   ============================================================ */
+.wrap{
+  --paper:#f4f4f0;
+  --special: #407E40;
+  --ink:#16160F;
+  --grey:#648b64;
+  --faint:#adb0ad;
+  --rule:#E7E7E1;
+  --mark:#F7EDA8;      /* open */
+  --mark-hi:#F2E27E;   /* open, hover */
+  --fresh:#b7deaf;     /* just collapsed */
+  --alert:#A8443C;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  background:var(--paper);color:var(--ink);font-family:var(--serif);font-weight:300;
+  -webkit-font-smoothing:antialiased;min-height:100vh;
+}
+.wrap *{box-sizing:border-box}
+.wrap button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;text-align:left}
+.wrap :focus-visible{outline:1.5px solid var(--ink);outline-offset:3px}
+
+.page{max-width:640px;margin:0 auto;padding:56px 26px 80px}
+.lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--grey)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- entry head ---------- */
+.entryhead{margin-bottom:52px}
+.headTop{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.h1{font-size:30px;font-weight:700;margin:0;letter-spacing:-.005em}
+.ipa{font-family:var(--mono);font-size:11px;color:var(--grey);margin-top:5px}
+.pos{font-style:italic;font-size:14px;color:var(--grey);margin-top:11px}
+.defs{margin:5px 0 0;padding-left:19px;font-size:14.5px;line-height:1.75}
+.defs li::marker{color:var(--faint);font-family:var(--mono);font-size:10px}
+
+.nav{display:flex;align-items:center;gap:13px;flex-shrink:0}
+.nav button{font-family:var(--mono);font-size:11px;color:var(--grey);transition:color .12s}
+.nav button:hover:not(:disabled){color:var(--ink)}
+.nav button:disabled{color:var(--faint);cursor:not-allowed}
+.arch{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--faint)}
+
+/* ---------- slug ---------- */
+.slug{display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;padding-bottom:9px;border-bottom:1px solid var(--rule);margin-bottom:30px}
+.slugName{font-style:italic;font-size:15px}
+.sep{flex:1}
+
+/* ---------- the board ---------- */
+.board{
+  font-size:clamp(1.24rem,4.5vw,1.62rem);
+  line-height:2.05;
+  color:var(--ink);          /* one color. no exceptions. */
+  margin-bottom:40px;
+  word-break:break-word;
+}
+.answer{font-weight:400}
+/* the mark stays on the word that just collapsed until the next one does */
+.fresh{
+  background:linear-gradient(transparent 10%,var(--fresh) 10%,var(--fresh) 90%,transparent 90%);
+  border-radius:1px;
+}
+.new{animation:land .42s cubic-bezier(.2,.9,.25,1) both}
+@keyframes land{
+  0%{opacity:0;transform:translateY(2px);letter-spacing:.06em}
+  100%{opacity:1;transform:none;letter-spacing:normal}
+}
+.bracket{-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:.04em .03em;border-radius:1px}
+.bracket::before{content:"["}
+.bracket::after{content:"]"}
+/* yellow means: you can answer this one right now */
+.open{
+  cursor:pointer;
+  background:linear-gradient(transparent 10%,var(--mark) 10%,var(--mark) 90%,transparent 90%);
+}
+.open:hover{background:linear-gradient(transparent 10%,var(--mark-hi) 10%,var(--mark-hi) 90%,transparent 90%)}
+.letter{font-family:var(--mono);font-size:.66em;letter-spacing:.04em;padding-left:.16em}
+
+/* ---------- console: input, status, tally. nothing else. ---------- */
+.field{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ink);padding-bottom:8px}
+.field input{flex:1;min-width:0;border:none;background:none;padding:0;font-family:var(--serif);font-weight:300;font-size:20px;color:var(--ink)}
+.field input:focus{outline:none}
+.field input::placeholder{color:var(--faint)}
+.go{font-family:var(--mono);font-size:11px;color:var(--grey);transition:color .12s}
+.go:hover{color:var(--ink)}
+.bad{border-color:var(--alert);animation:nudge .3s ease}
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}60%{transform:translateX(4px)}}
+
+.state{display:block;font-family:var(--mono);font-size:10.5px;line-height:1.6;color:var(--faint);margin-top:11px;min-height:17px}
+.state b{color:var(--grey);font-weight:400}
+.armed b{color:var(--alert)}
+
+.row{display:flex;align-items:baseline;gap:18px;margin-top:14px}
+.row button{font-family:var(--mono);font-size:11px;color:var(--grey);transition:color .12s}
+.row button:hover:not(:disabled){color:var(--ink)}
+.row button:disabled{color:var(--faint);cursor:not-allowed}
+.grow{flex:1}
+.tally{font-family:var(--mono);font-size:11px;color:var(--faint);white-space:nowrap}
+.tally b{color:var(--ink);font-weight:400}
+
+.primer{font-size:13.5px;line-height:1.8;color:var(--grey);margin:34px 0 0;max-width:52ch}
+.sw{display:inline-block;width:.62em;height:.62em;border-radius:2px;vertical-align:baseline}
+.swY{background:var(--mark)}
+.swG{background:var(--fresh)}
+.primer code{font-family:var(--mono);font-size:.85em;color:var(--ink)}
+
+/* ---------- overlays ---------- */
+.veil{position:fixed;inset:0;background:rgba(252,252,250,.94);display:none;place-items:center;padding:26px;z-index:20}
+.veilOn{display:grid}
+.sheet{width:100%;max-width:352px;animation:up .26s ease both}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.sheetTop{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px}
+.x{font-family:var(--mono);font-size:11px;color:var(--grey)}
+.x:hover{color:var(--ink)}
+
+.mon{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
+.mon span{font-style:italic;font-size:15px}
+.mon button{font-family:var(--mono);font-size:11px;color:var(--grey)}
+.mon button:disabled{color:var(--faint);cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.dow{font-family:var(--mono);font-size:9px;color:var(--faint);text-align:center;padding-bottom:7px}
+.cell{aspect-ratio:1;display:grid;place-items:center;position:relative;font-family:var(--mono);font-size:11.5px;color:#DEDED7;border-radius:2px}
+.has{color:var(--ink);cursor:pointer}
+.has:hover{background:var(--mark)}
+.dot::after,.ring::after{content:"";position:absolute;bottom:5px;width:3px;height:3px;border-radius:50%}
+.dot::after{background:var(--ink)}
+.ring::after{border:1px solid var(--grey)}
+.here{background:var(--mark)}
+.key{display:flex;gap:15px;margin-top:18px;font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+
+.rank{font-size:27px;font-weight:400;margin:0 0 6px}
+.rankNote{font-style:italic;font-size:14px;color:var(--grey);margin-bottom:24px}
+.final{font-size:17px;line-height:1.65;padding-left:14px;border-left:1px solid var(--rule);margin-bottom:14px}
+.note{font-size:13px;line-height:1.7;font-style:italic;color:var(--grey);margin:0 0 22px;padding-left:14px}
+.tape{font-family:var(--mono);font-size:15px;letter-spacing:.14em;margin-bottom:22px;word-break:break-all}
+.nums{display:flex;gap:22px;margin-bottom:26px;font-family:var(--mono);font-size:9.5px;color:var(--grey)}
+.nums b{display:block;font-family:var(--serif);font-size:22px;font-weight:300;color:var(--ink);margin-top:4px}
+.acts{display:flex;gap:20px;font-family:var(--mono);font-size:11px}
+.acts button{color:var(--grey)}
+.acts button:hover{color:var(--ink)}
+.lead{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+
+.colophon{margin-top:64px;padding-top:16px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:10px;line-height:1.9;color:var(--faint)}
+.colophon em{color:var(--grey);font-style:normal}
+
+@media (max-width:520px){
+  .page{padding:40px 22px 64px}
+  .board{line-height:2}
+  .row{flex-wrap:wrap}
+  .tally{width:100%}
+  .grow{display:none}
+}
+@media (prefers-reduced-motion:reduce){.wrap *{animation:none!important;transition:none!important}}

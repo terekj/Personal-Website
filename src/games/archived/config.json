@@ -1,0 +1,12 @@
+{
+  "penalties": { "wrong": 1, "letter": 2, "reveal": 5 },
+  "guardMs": 400, 
+  "ranks": [
+    { "max": 0, "name": "lex·i·cog·ra·pher", "note": "not one wrong turn." },
+    { "max": 3, "name": "ed·i·tor", "note": "clean enough to print." },
+    { "max": 8, "name": "read·er", "note": "solid work." },
+    { "max": 15, "name": "brows·er", "note": "got there in the end." },
+    { "max": 28, "name": "skim·mer", "note": "the brackets won a few." },
+    { "max": 1000000000, "name": "guess·er", "note": "no shame in reading along." }
+  ]
+}
