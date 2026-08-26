@@ -130,14 +130,37 @@ src/app/games/archived/[date]/page.tsx     loads one puzzle and renders <Archive
 ## Publishing
 
 `puzzles.server.ts` only returns puzzles that are both `published:
-true` and dated today or earlier — a future-dated file is invisible
-until its date arrives, no redeploy required, since the route is
-rendered per-request (`export const dynamic = "force-dynamic"`) rather
-than statically at build time. This also means every published puzzle
-file, answers included, is technically fetchable by anyone who looks —
-there's no server-side gate on *solving*, only on *listing*. Fine for
-a personal site; see the spec's Constraints section if that ever
-needs to change.
+true` and dated today or earlier, using the calendar day in **Pacific
+time** specifically (not the server's own zone, and not the visitor's)
+— see `DAY_BOUNDARY_TZ` in that file. A future-dated file is invisible
+until its date arrives Pacific time, no redeploy required, since the
+route is rendered per-request (`export const dynamic =
+"force-dynamic"`) rather than statically at build time. This also
+means every published puzzle file, answers included, is technically
+fetchable by anyone who looks — there's no server-side gate on
+*solving*, only on *listing*. Fine for a personal site; see the spec's
+Constraints section if that ever needs to change.
+
+### Previewing before the date arrives
+
+Add `?preview=<PREVIEW_TOKEN>` to a puzzle's URL to bypass both the
+`published` flag and the date gate — e.g.
+`terekj.me/games/archived/2026-09-01?preview=<token>`. A banner marks
+the page as a preview so it's never confused with the live view.
+
+`PREVIEW_TOKEN` is an env var, not committed:
+
+- **Local dev:** set in `.env.local` (already gitignored). A value was
+  generated for you when this feature was added; check that file or
+  generate a new one with `node -e "console.log(require('crypto').randomBytes(18).toString('base64url'))"`.
+- **Production:** add the same var under Vercel's Project Settings →
+  Environment Variables, then redeploy. Without it set, `?preview=`
+  never matches anything and the route behaves exactly as before —
+  preview mode is off by default everywhere.
+
+Treat the token like a password: don't post it publicly. Anyone who
+has it can see any puzzle (draft or future-dated) before you publish
+it; it can't modify anything.
 
 ## Progress
 

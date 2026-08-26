@@ -56,6 +56,23 @@ export function getLatestPuzzle(): Puzzle | undefined {
   return all[all.length - 1];
 }
 
+/** True if `token` matches the PREVIEW_TOKEN env var. Empty/unset env var
+ *  never matches anything, so preview mode is off by default everywhere
+ *  (local dev included) until you set one. */
+export function isValidPreviewToken(token: string | undefined | null): boolean {
+  const secret = process.env.PREVIEW_TOKEN;
+  return !!secret && !!token && token === secret;
+}
+
+/** Same as getPuzzleByDate, but ignores both the `published` flag and the
+ *  date gate — for checking a puzzle before its day arrives via
+ *  `?preview=<PREVIEW_TOKEN>`. Callers are responsible for checking
+ *  isValidPreviewToken first; this function doesn't re-check it, so it
+ *  must never be reachable without that check. */
+export function getPuzzleByDateForPreview(date: string): Puzzle | undefined {
+  return getRawPuzzles().find((p) => p.date === date);
+}
+
 export function getConfig(): GameConfig {
   return JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
 }

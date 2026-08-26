@@ -24,6 +24,7 @@ type Props = {
   puzzle: Puzzle;
   archive: ArchiveEntry[]; // ascending by date, includes this puzzle
   config: GameConfig;
+  previewing?: boolean; // true when viewed via ?preview=<token>, bypassing the publish gate
 };
 
 function cx(...xs: Array<string | false | null | undefined>) {
@@ -113,7 +114,7 @@ function renderParts(
   );
 }
 
-export default function ArchivedGame({ puzzle, archive, config }: Props) {
+export default function ArchivedGame({ puzzle, archive, config, previewing }: Props) {
   const router = useRouter();
 
   // The clue tree is mutated in place, matching the reference engine's
@@ -361,6 +362,11 @@ export default function ArchivedGame({ puzzle, archive, config }: Props) {
   return (
     <div className={styles.wrap}>
       <main className={styles.page}>
+        {previewing && (
+          <div className={styles.previewBanner}>
+            preview — {puzzle.published ? "this puzzle isn't live for its date yet" : "draft, unpublished"}. only visible via this link.
+          </div>
+        )}
         <header className={styles.entryhead}>
           <div className={styles.headTop}>
             <div>

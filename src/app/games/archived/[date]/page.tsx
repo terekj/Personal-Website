@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getAllPuzzles, getConfig, getPuzzleByDate } from "@/games/archived/puzzles.server";
+import {
+  getAllPuzzles,
+  getConfig,
+  getPuzzleByDate,
+  getPuzzleByDateForPreview,
+  isValidPreviewToken,
+} from "@/games/archived/puzzles.server";
 import ArchivedGame from "@/games/archived/ArchivedGame";
 
 // The "published up to today" gate in puzzles.server.ts reads the
@@ -12,14 +18,21 @@ export const dynamic = "force-dynamic";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 type Params = { date: string };
+type Search = { preview?: string };
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<Params>;
+  searchParams: Promise<Search>;
 }): Promise<Metadata> {
   const { date } = await params;
-  const puzzle = DATE_RE.test(date) ? getPuzzleByDate(date) : undefined;
+  const { preview } = await searchParams;
+  if (!DATE_RE.test(date)) return { title: "archived" };
+  const puzzle = isValidPreviewToken(preview)
+    ? getPuzzleByDateForPreview(date)
+    : getPuzzleByDate(date);
   if (!puzzle) return { title: "archived" };
   return {
     title: `archived · ${puzzle.title}`,
@@ -27,11 +40,22 @@ export async function generateMetadata({
   };
 }
 
-export default async function ArchivedPuzzlePage({ params }: { params: Promise<Params> }) {
+export default async function ArchivedPuzzlePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>;
+  searchParams: Promise<Search>;
+}) {
   const { date } = await params;
+  const { preview } = await searchParams;
   if (!DATE_RE.test(date)) notFound();
 
-  const puzzle = getPuzzleByDate(date);
+  // A valid ?preview=<PREVIEW_TOKEN> bypasses both the `published` flag
+  // and the date gate, for checking a puzzle before it goes live. Anyone
+  // without the token gets ordinary public behavior.
+  const previewing = isValidPreviewToken(preview);
+  const puzzle = previewing ? getPuzzleByDateForPreview(date) : getPuzzleByDate(date);
   if (!puzzle) notFound();
 
   const archive = getAllPuzzles().map((p) => ({
@@ -42,5 +66,13 @@ export default async function ArchivedPuzzlePage({ params }: { params: Promise<P
   }));
   const config = getConfig();
 
-  return <ArchivedGame key={puzzle.id} puzzle={puzzle} archive={archive} config={config} />;
+  return (
+    <ArchivedGame
+      key={puzzle.id}
+      puzzle={puzzle}
+      archive={archive}
+      config={config}
+      previewing={previewing}
+    />
+  );
 }
