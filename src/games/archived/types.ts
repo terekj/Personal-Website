@@ -47,6 +47,10 @@ export type RunState = {
   done: boolean;
   gaveUp: boolean;
   clues: Record<string, ClueRuntimeState>;
+  // Normalized words the player has already guessed wrong this run, so a
+  // repeat miss doesn't charge a second penalty. Optional for backward
+  // compatibility with runs saved before this field existed.
+  guessed?: string[];
 };
 
 export type RankConfig = {

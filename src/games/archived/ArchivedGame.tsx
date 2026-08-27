@@ -104,9 +104,7 @@ function ClueSpan({
           fragments a box whose first line box fragment is empty. */}
       {node.parts[0]?.type === "clue" && " "}
       {renderParts(node.parts, freshId, animateId, onTouch)}
-      {open && node.hint !== "hidden" && (
-        <span className={styles.letter}>({firstLetter(node.answer)})</span>
-      )}
+      {open && node.hint !== "hidden" && `(${firstLetter(node.answer)})`}
     </span>
   );
 }
@@ -173,10 +171,20 @@ export default function ArchivedGame({ puzzle, archive, config, previewing }: Pr
   const [shake, setShake] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
   const [month, setMonth] = useState(puzzle.date.slice(0, 7));
   const [copyLabel, setCopyLabel] = useState("copy result");
   const inputRef = useRef<HTMLInputElement>(null);
   const announceRef = useRef<HTMLDivElement>(null);
+
+  // Every word the player has submitted that missed (didn't match any
+  // open clue), normalized. A word is only ever charged as wrong once —
+  // guessing it again just repeats "already guessed!" for free — and if
+  // it later turns out to be the real answer to a newly-opened clue, it's
+  // still accepted normally; this set only ever suppresses the penalty,
+  // never the win.
+  const guessedRef = useRef<Set<string>>(new Set());
 
   // Restore saved progress after mount. Deferred so the very first
   // client render matches the server's (both start from a fresh parse),
@@ -189,6 +197,7 @@ export default function ArchivedGame({ puzzle, archive, config, previewing }: Pr
         if (s) Object.assign(c, s);
       }
       runRef.current = { wrongs: saved.wrongs, done: saved.done, gaveUp: saved.gaveUp };
+      if (saved.guessed) guessedRef.current = new Set(saved.guessed);
       rerender();
       if (saved.done) setEndOpen(true);
     }
@@ -202,16 +211,23 @@ export default function ArchivedGame({ puzzle, archive, config, previewing }: Pr
   }, [shake]);
 
   useEffect(() => {
-    if (!calOpen && !endOpen) return;
+    if (!flash) return;
+    const t = window.setTimeout(() => setFlash(null), 1600);
+    return () => window.clearTimeout(t);
+  }, [flash]);
+
+  useEffect(() => {
+    if (!calOpen && !endOpen && !confirmId) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setCalOpen(false);
         setEndOpen(false);
+        setConfirmId(null);
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [calOpen, endOpen]);
+  }, [calOpen, endOpen, confirmId]);
 
   const idx = archive.findIndex((a) => a.id === puzzle.id);
   const prevEntry = idx > 0 ? archive[idx - 1] : null;
@@ -224,9 +240,17 @@ export default function ArchivedGame({ puzzle, archive, config, previewing }: Pr
   const s = score(clues, wrongs, config);
   const rank = rankFor(s, config);
   const hasLettered = open.some((c) => c.hint !== "hidden");
+  const confirmNode = confirmId ? clues.find((c) => c.path === confirmId) ?? null : null;
+  const confirmIsReveal = confirmNode?.hint !== "hidden";
 
   function persist() {
-    const snap: RunState = { wrongs: runRef.current.wrongs, done: runRef.current.done, gaveUp: runRef.current.gaveUp, clues: {} };
+    const snap: RunState = {
+      wrongs: runRef.current.wrongs,
+      done: runRef.current.done,
+      gaveUp: runRef.current.gaveUp,
+      clues: {},
+      guessed: Array.from(guessedRef.current),
+    };
     for (const c of clues) snap.clues[c.path] = { solved: c.solved, hint: c.hint, solvedBy: c.solvedBy };
     saveRun(puzzle.id, snap);
   }
@@ -259,6 +283,18 @@ export default function ArchivedGame({ puzzle, archive, config, previewing }: Pr
     if (id === lastTouchRef.current.id && now - lastTouchRef.current.at < config.guardMs) return;
     lastTouchRef.current = { id, at: now };
 
+    // Ask for confirmation instead of acting immediately; confirmAction()
+    // below does the actual peek/reveal once the player commits.
+    setConfirmId(id);
+  }
+
+  function confirmAction() {
+    const id = confirmId;
+    setConfirmId(null);
+    if (!id || runRef.current.done) return;
+    const n = clues.find((c) => c.path === id);
+    if (!n || !isOpen(n)) return;
+
     if (n.hint === "hidden") {
       n.hint = "lettered";
       persist();
@@ -275,14 +311,27 @@ export default function ArchivedGame({ puzzle, archive, config, previewing }: Pr
   function submit() {
     if (runRef.current.done) return;
     if (!norm(guess)) return;
-    const hit = open.find((c) => norm(c.answer) === norm(guess));
+    const g = norm(guess);
+    const hit = open.find((c) => norm(c.answer) === g);
     if (hit) {
       solve(hit, "guess");
       return;
     }
-    runRef.current.wrongs++;
-    persist();
-    rerender();
+    // A word that missed once is only ever charged once: guessing the
+    // same wrong word again just repeats "already guessed!" for free.
+    // If it later turns out to be a real (now-open) answer, the `hit`
+    // check above already accepts it — this branch never blocks a win.
+    if (guessedRef.current.has(g)) {
+      setFlash("already guessed!");
+      if (announceRef.current) announceRef.current.textContent = "Already guessed!";
+    } else {
+      guessedRef.current.add(g);
+      runRef.current.wrongs++;
+      persist();
+      rerender();
+      setFlash("incorrect");
+      if (announceRef.current) announceRef.current.textContent = "Incorrect.";
+    }
     setShake(false);
     requestAnimationFrame(() => requestAnimationFrame(() => setShake(true)));
     inputRef.current?.select();
@@ -451,7 +500,9 @@ export default function ArchivedGame({ puzzle, archive, config, previewing }: Pr
             </button>
           </div>
           <span className={cx(styles.state, hasLettered && styles.armed)}>
-            {!open.length
+            {flash
+              ? flash
+              : !open.length
               ? done
                 ? "solved."
                 : ""
@@ -511,6 +562,35 @@ export default function ArchivedGame({ puzzle, archive, config, previewing }: Pr
             <div className={styles.key}>
               <span>· solved</span>
               <span>∘ started</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmNode && (
+        <div
+          className={cx(styles.veil, styles.veilOn)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setConfirmId(null);
+          }}
+        >
+          <div className={styles.sheet}>
+            <div className={styles.sheetTop}>
+              <span className={styles.lbl}>{confirmIsReveal ? "reveal" : "peek"}</span>
+              <button className={styles.x} onClick={() => setConfirmId(null)}>
+                close
+              </button>
+            </div>
+            <p className={styles.note}>
+              {confirmIsReveal
+                ? "reveal the full answer? this solves the clue and can't be undone."
+                : "peek at the first letter of this clue's answer?"}
+            </p>
+            <div className={styles.acts}>
+              <button className={styles.confirm} onClick={confirmAction}>
+                confirm
+              </button>
+              <button onClick={() => setConfirmId(null)}>cancel</button>
             </div>
           </div>
         </div>

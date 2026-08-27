@@ -88,7 +88,6 @@
   background:linear-gradient(transparent 10%,var(--mark) 10%,var(--mark) 90%,transparent 90%);
 }
 .open:hover{background:linear-gradient(transparent 10%,var(--mark-hi) 10%,var(--mark-hi) 90%,transparent 90%)}
-.letter{font-family:var(--mono);font-size:.66em;letter-spacing:.04em;padding-left:.16em}
 
 /* ---------- console: input, status, tally. nothing else. ---------- */
 .field{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ink);padding-bottom:8px}
@@ -153,6 +152,8 @@
 .acts button{color:var(--grey)}
 .acts button:hover{color:var(--ink)}
 .lead{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+button.confirm{background:var(--special);color:#fff;padding:8px 18px;border-radius:0;transition:background .12s}
+button.confirm:hover{background:#356b35;color:#fff}
 
 .colophon{margin-top:64px;padding-top:16px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:10px;line-height:1.9;color:var(--faint)}
 .colophon em{color:var(--grey);font-style:normal}
